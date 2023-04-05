@@ -1,11 +1,15 @@
-// use bson::{doc, Document};
-// use rand::{thread_rng, Rng};
+
 use std::collections::{HashMap};
+
 use regex::Regex;
+
 use serde::Serialize;
+use std::collections::{HashSet};
+use jsonwebtoken::{ encode, errors::Result, EncodingKey, Header};
 
+use chrono::{Duration, Utc};
 
-use crate::model::user::MissingField;
+use crate::{model::user::{MissingField, Claims}, get_mongodb_client};
 
 pub async fn is_valid_email(email: &str) -> bool {
     let re = Regex::new(r"^([a-zA-Z0-9]+)@([a-zA-Z0-9]+)\.([a-zA-Z]{2,5})$").unwrap();
@@ -116,3 +120,25 @@ pub async fn check_empty_fields<T: Serialize>(
 //         }
 //     }
 // }
+pub fn generate_access_token(user_id: u32) -> Result<String> {
+    let expiration = Utc::now() + Duration::minutes(10);
+    let claims = Claims {
+        user_id,
+        exp: expiration.timestamp() as usize,
+        token_type: "access".to_string(),
+    };
+    let secret = "access_secret".as_bytes();
+    let header = Header::default();
+    encode(&header, &claims, &EncodingKey::from_secret(secret))
+}
+pub fn generate_refresh_token(user_id: u32) -> Result<String> {
+    let expiration = Utc::now() + Duration::days(7);
+    let claims = Claims {
+        user_id,
+        exp: expiration.timestamp() as usize,
+        token_type: "refresh".to_string(),
+    };
+    let secret = "refresh_secret".as_bytes();
+    let header = Header::default();
+    encode(&header, &claims, &EncodingKey::from_secret(secret))
+}

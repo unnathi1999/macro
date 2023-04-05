@@ -1,10 +1,22 @@
 use serde::{Serialize, Deserialize};
-use motio_macro::{ MongoInsertable,};
-use futures_util::stream::TryStreamExt;
+extern crate bson;
+use bson::Document;
 
-#[derive(Debug, Serialize, Deserialize, MongoInsertable)]
+use motio_macro::{ MongoInsertable,MongoDeletable};
+use futures_util::stream::TryStreamExt;
+use bson::oid::ObjectId;
+use bson::doc;
+use mongodb::results::DeleteResult;
+
+
+use mongodb::sync::Client;
+
+   
+#[derive(Debug, Serialize, Default, Deserialize, MongoInsertable, MongoDeletable)]
 
 pub struct User {
+    pub id: Option<ObjectId>,
+
     pub first_name:String,
     pub last_name:Option< String>,
     pub user_name:String,
@@ -32,4 +44,26 @@ pub struct MissingField{
     pub message: String,
     
 
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub user_id: u32,
+    pub exp: usize,
+    pub token_type: String,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Login{
+   
+    pub email:String,
+
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+
+pub struct AccessToken {
+    pub message:String,
+    pub access_token: String,
+    pub refresh_token: String,
+    
 }

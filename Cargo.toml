@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+
 futures = "0.3.17"
 
 reqwest = "*"
@@ -14,7 +16,7 @@ tokio = { version = "1", features = ["macros"] }
 dotenvy="*"
 serde = { version = "1.0", features = ["derive"] }
 
-bson = { version = "2.5.0", features = ["chrono-0_4"] } # Needed for using chrono datetime in doc
+bson = { version = "2.6.1", features = ["chrono-0_4"] } # Needed for using chrono datetime in doc
 # chrono = "0.4" # Used for setting DateTimes
 chrono = { version = "0.4.19", features = ["serde"] }
 # futures = "0.3"
@@ -26,16 +28,21 @@ jsonwebtoken="8.2.0"
 salvo_core="0.37.9"
 rand="0.8.5"
 lettre="0.10.3"
-redis="0.22.3"
+redis="0.23.0"
 futures-util = "0.3.19"
-
+# my_crypto = ""
 
 proc-macro2 = "1.0.56"
+argon2 = "0.5.0"
+scrypt = "0.11.0"
+hex = "0.4.3"
+
+
 
 
 motio_macro={path="motio_macro"}
 [dependencies.mongodb]
-version = "2.3.0"
+version = "2.4.0"
 features = ["tokio-sync"]
 mongo = "0.0.1"
 syn = "2.0.12"
