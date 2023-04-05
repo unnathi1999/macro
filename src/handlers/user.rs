@@ -2,10 +2,10 @@ use crate::get_mongodb_client;
 
 
 use crate::model::user::{User, CreateResponseObject, ResponseObject, Login, AccessToken};
-use crate::utilities::common::{is_valid_email, check_empty_fields,  };
+use crate::utilities::common::{is_valid_email, check_empty_fields, generate_refresh_token,generate_access_token };
 
-use bcrypt::{hash, DEFAULT_COST};
-use bson::doc;
+use bcrypt::{hash, DEFAULT_COST, verify};
+use bson::{doc, Document};
 
 use reqwest::StatusCode;
 use salvo::writer::Json;
@@ -75,90 +75,68 @@ pub async fn list_users(_req: &mut Request, res: &mut Response) {
     }
 }
 
-
 // #[handler]
-// pub async fn user_update(_req: &mut Request, res: &mut Response) {
+// pub async fn login(req: &mut Request, res: &mut Response) {
 //     let client = get_mongodb_client();
-//     let payload_data = _req.parse_json::<User>().await.unwrap();
-//     let user_id = _req.param("id").unwrap();
 
-//     // Update user
-//     let filter = doc! {"_id": ObjectId::parse_str(user_id).unwrap()};
-//     let update = doc! {"$set": payload_data.to_bson().unwrap()};
-//     match User::update(&client, filter, update).await {
-//         Ok(_) => {
-//             // Retrieve updated user
-//             let updated_user = match User::list(&client, Some(filter)).await {
-//                 Ok(mut users) => users.remove(0),
-//                 Err(_) => {
-//                     let response_obj = ResponseObject {
-//                         message: "User updated successfully but failed to retrieve updated user".to_string(),
-//                     };
-//                     res.set_status_code(StatusCode::OK);
-//                     return res.render(Json(response_obj));
-//                 }
-//             };
-
-//             let response_obj = CreateResponseObject {
-//                 message: "User updated successfully".to_string(),
-//                 data: vec![updated_user.clone()],
-//             };
-//             res.render(Json(response_obj));
-//         }
-//         Err(e) => {
+//     // Parse the request body into a Login struct
+//     let payload_data = match req.parse_json::<Login>().await {
+//         Ok(data) => data,
+//         Err(_) => {
 //             let response_obj = ResponseObject {
-//                 message: format!("Failed to update user: {}", e.to_string()),
+//                 message: "Invalid JSON payload".to_string(),
 //             };
-//             res.set_status_code(StatusCode::INTERNAL_SERVER_ERROR);
-//             res.render(Json(response_obj));
+//             res.set_status_code(StatusCode::BAD_REQUEST);
+//             return res.render(Json(response_obj));
 //         }
+//     };
+
+//     // Extract the email and password from the Login struct
+//     let email = &payload_data.email;
+//     let password = &payload_data.password;
+
+//     // Check if any required fields are missing from the Login struct
+//     let missing_fields = check_empty_fields(&payload_data, &["email", "password"]).await;
+//     if !missing_fields.valid {
+//         res.set_status_code(StatusCode::BAD_REQUEST);
+//         let response_obj = ResponseObject {
+//             message: missing_fields.message,
+//         };
+//         return res.render(Json(response_obj));
 //     }
-// // }
-//
 
+//     // Build the pipeline for the MongoDB aggregation
+//     let pipeline = vec![doc! {
+//         "$match": doc! {
+//             "$or": [
+//                 doc! {
+//                     "user_name": &payload_data.user_name
+//                 },
+//                 doc! {
+//                     "email": &payload_data.email
+//                 }
+//             ]
+//         }
+//     }];
 
-#[handler]
-pub async fn login(req: &mut Request, res: &mut Response) {
-    let client = get_mongodb_client();
-    let payload_data = match req.parse_json::<Login>().await {
-        Ok(data) => data,
-        Err(_) => {
-            let response_obj = ResponseObject {
-                message: "Invalid JSON payload".to_string(),
-            };
-            res.set_status_code(StatusCode::BAD_REQUEST);
-            return res.render(Json(response_obj));
-        }
-    };
-      let email = &payload_data.email;
-          let password = &payload_data.password;
-    let missing_fields = check_empty_fields(&payload_data, &[""]).await;
-    // Check if any required fields are missing from the Login struct
-    if !missing_fields.valid {
-        res.set_status_code(StatusCode::BAD_REQUEST);
-        let response_obj = ResponseObject {
-            // status: "failed".to_string(),
-            message: missing_fields.message,
-        };
-        return res.render(Json(response_obj));
-    }
-    let filter = doc! {"email": email};
-    let mut users = User::list(&client, Some(filter)).await.unwrap();
-   
+//     let user =  User::aggregate(&client, pipeline).await.unwrap(); 
+//     let password = doc.get_str("password").unwrap_or("");
+//         if bcrypt::verify(&payload_data.password, &password).unwrap() {
+        
+//             let user_id = doc.get_i32("user_id").unwrap_or(0);
+//             let access_token = generate_access_token(user_id as u32).unwrap();
+//             let refresh_token = generate_refresh_token(user_id as u32).unwrap();
+//             let access_token_response = AccessToken {
+//                 message: "Login successful".to_string(),
+//                 access_token,
+//                 refresh_token,
+//             };
+//             return res.render(Json(access_token_response));
+//         }
     
-    for user in users {
-        let password_hash = user.password;
-        if bcrypt::verify(password, &password_hash).unwrap() {
-            let access_token_response = ResponseObject {
-                message: "Login successful".to_string(),
-            };
-            return res.render(Json(access_token_response));
-        }
-    }
-
-    let response_obj = ResponseObject {
-        message: "Invalid login".to_string(),
-    };
-    res.set_status_code(StatusCode::UNAUTHORIZED);
-    res.render(Json(response_obj))
-}
+//     let response_obj = ResponseObject {
+//         message: "Invalid login ".to_string(),
+//     };
+//     res.set_status_code(StatusCode::UNAUTHORIZED);
+//     res.render(Json(response_obj))
+//     }

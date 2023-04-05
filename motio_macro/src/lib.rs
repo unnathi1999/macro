@@ -90,6 +90,7 @@ pub fn mongo_deletable_derive(input: TokenStream) -> TokenStream {
 
     let delete_code = quote! {
         pub async fn delete(id: &ObjectId,client: &Client) -> Result<DeleteResult, mongodb::error::Error> {
+            
             let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
             let collection = client.database(&db_name).collection(#str_name);
         
@@ -107,7 +108,6 @@ pub fn mongo_deletable_derive(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
-
 #[proc_macro_derive(MongoAggregate)]
 pub fn mongo_aggregate_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -117,11 +117,14 @@ pub fn mongo_aggregate_derive(input: TokenStream) -> TokenStream {
     let str_name=&name.to_string();
    
     let pipeline_code = quote! {
-        pub async fn aggregate(client: &mongodb::Client, pipeline: Vec<bson::Document>) -> Result<Vec<Self>, mongodb::error::Error> {
+        pub async fn aggregate<T>(client: &mongodb::Client, pipeline: Vec<bson::Document>) -> Result<Vec<T>, mongodb::error::Error>
+        where
+            T: DeserializeOwned,
+        {
             let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
-            let collection = client.database(&db_name).collection(#str_name);
+            let collection = client.database(&db_name).collection::<T>(#str_name);
 
-            let cursor = collection.aggregate(pipeline, None).await.unwrap();
+            let mut cursor = collection.aggregate(pipeline, None).await.unwrap();
 
             let mut results = Vec::new();
             while let Some(doc) = cursor.try_next().await.unwrap() {

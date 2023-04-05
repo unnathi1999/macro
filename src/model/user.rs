@@ -2,20 +2,19 @@ use serde::{Serialize, Deserialize};
 extern crate bson;
 use bson::Document;
 
-use motio_macro::{ MongoInsertable,MongoDeletable};
+use motio_macro::{ MongoInsertable,MongoAggregate};
 use futures_util::stream::TryStreamExt;
 use bson::oid::ObjectId;
 use bson::doc;
 use mongodb::results::DeleteResult;
-
+use serde::de::DeserializeOwned;
 
 use mongodb::sync::Client;
 
    
-#[derive(Debug, Serialize, Default, Deserialize, MongoInsertable, MongoDeletable)]
+#[derive(Debug, Serialize, Default, Deserialize, MongoInsertable,MongoAggregate)]
 
 pub struct User {
-    pub id: Option<ObjectId>,
 
     pub first_name:String,
     pub last_name:Option< String>,
@@ -55,7 +54,7 @@ pub struct Claims {
 pub struct Login{
    
     pub email:String,
-
+pub user_name:String,
     pub password: String,
 }
 
