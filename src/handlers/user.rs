@@ -13,6 +13,7 @@ use bson::{doc};
 use reqwest::StatusCode;
 use salvo::writer::Json;
 use salvo::{Request, Response,handler};
+use serde_json::json;
 
 #[handler]
 pub async fn user_signup(_req: &mut Request, res: &mut Response) {
@@ -44,19 +45,36 @@ pub async fn user_signup(_req: &mut Request, res: &mut Response) {
     let password = &payload_data.password;
     let hashed_password = hash(password, DEFAULT_COST).unwrap();   
     payload_data.password = hashed_password;
-    let _result = payload_data.insert(&client).await.unwrap();
-    println!("{:?}",_result);
-    let inserted_id = _result.inserted_id.as_object_id().unwrap();
-    let filter=doc! {"_id": inserted_id};
-    // Retrieve list of users
-    let _users = User::find(&client,Some(filter)).await.unwrap();
+    let result = User::insert(&payload_data, &client).await;
+    if let Ok(insert_result) = result {
+        let inserted_id = insert_result.inserted_id.as_object_id().unwrap();
+        let response_obj = CreateResponseObject {
+            message: "User created successfully".to_string(),
+            data: Some(json!({
+                "inserted_id": inserted_id.to_hex()
+            })),
+        };
+        res.set_status_code(StatusCode::CREATED);
+        return res.render(Json(response_obj));
+    } else {
+        let response_obj = ResponseObject {
+            message: "Error creating user".to_string(),
+        };
+        res.set_status_code(StatusCode::INTERNAL_SERVER_ERROR);
+        return res.render(Json(response_obj));
+    }
+    
+    // let inserted_id = result.inserted_id.await.unwrap();
+    // // let filter=doc! {"_id": inserted_id};
+    // // // Retrieve list of users
+    // // let _users = User::find(&client,Some(filter)).await.unwrap();
 
-    // Render response with list of users
-    let response_obj = CreateResponseObject {
-        message: "User is added successfully".to_string(),
-        data: inserted_id.to_string()
-    };
-    res.render(Json(response_obj));
+    // // Render response with list of users
+    // let response_obj = CreateResponseObject {
+    //     message: "User is added successfully".to_string(),
+    //     data: inserted_id.to_string()
+    // };
+    // res.render(Json(response_obj));
 }
 #[handler]
 pub async fn list_users(_req: &mut Request, res: &mut Response) {
