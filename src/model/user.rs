@@ -1,27 +1,26 @@
 use serde::{Serialize, Deserialize};
 extern crate bson;
-use bson::Document;
+// use mongodb::bson::oid::ObjectId;
 
-use motio_macro::{ MongoInsertable,MongoAggregate};
+
+use motio_macro::{ MongoInsertable,MongoAggregate,};
 use futures_util::stream::TryStreamExt;
-use bson::oid::ObjectId;
+
 use bson::doc;
-use mongodb::results::DeleteResult;
+
 use serde::de::DeserializeOwned;
 
-use mongodb::sync::Client;
-
-   
+use bson::oid::ObjectId;
 #[derive(Debug, Serialize, Default, Deserialize, MongoInsertable,MongoAggregate)]
 
 pub struct User {
-
+  
     pub first_name:String,
     pub last_name:Option< String>,
     pub user_name:String,
     pub email: String,
     pub password: String,
-    pub phone: String
+    pub phone: String,
 
 }
 #[derive(Debug, Serialize, Deserialize)]
@@ -53,8 +52,8 @@ pub struct Claims {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Login{
    
-    pub email:String,
-pub user_name:String,
+    pub email:Option<String>,
+pub user_name:Option<String>,
     pub password: String,
 }
 
@@ -65,4 +64,17 @@ pub struct AccessToken {
     pub access_token: String,
     pub refresh_token: String,
     
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateUser {
+    // pub unique_id:String,
+    pub first_name:Option< String>,
+    pub last_name:Option< String>,
+    pub user_name:Option< String>,
+    pub email: Option< String>,
+    pub about: Option< String>,
+    // pub password: String,
+    pub phone: Option< String>
+  
 }

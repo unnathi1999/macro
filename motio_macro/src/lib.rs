@@ -3,29 +3,34 @@ use proc_macro::TokenStream;
 use quote::quote;
 
 // use syn::{parse_macro_input, DeriveInput};
-use syn::{parse_macro_input, DeriveInput, Data, Fields};
+use syn::{parse_macro_input, Data, DeriveInput, Fields};
 // use bson::doc;
 
 #[proc_macro_derive(MongoInsertable)]
 pub fn mongo_insertable_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
+    // Get the name of the struct
     let name = input.ident;
-    let str_name=&name.to_string();
+    let str_name = &name.to_string();
+
+    // Get the fields of the struct
+
     let fields = if let Data::Struct(s) = input.data {
         if let Fields::Named(f) = s.fields {
             f.named
         } else {
-            panic!("MongoInsertable derive only supports structs with named fields")
+            panic!("mongocrud  derive only supports structs with named fields")
         }
     } else {
-        panic!("MongoInsertable derive only supports structs")
+        panic!("mongocrud derive only supports structs")
     };
 
     // Extract the names of the fields in the struct
     let _field_names = fields.iter().map(|f| &f.ident);
 
-   let insert_code = quote! {
+    // Generate the code for the insert() method
+    let insert_code = quote! {
         pub async fn insert(&self, client: &mongodb::Client) -> mongodb::error::Result<mongodb::results::InsertOneResult> {
             let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
             let collection = client.database(&db_name).collection(#str_name);
@@ -35,6 +40,8 @@ pub fn mongo_insertable_derive(input: TokenStream) -> TokenStream {
             collection.insert_one(document, None).await
         }
     };
+
+    // Generate the code for the list() method
     let list_code = quote! {
         pub async fn list(client: &mongodb::Client,filter: Option<bson::Document>) -> Result<Vec<Self>, mongodb::error::Error> {
             let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
@@ -50,34 +57,37 @@ pub fn mongo_insertable_derive(input: TokenStream) -> TokenStream {
             Ok(results)
         }
     };
-    // let update_code = quote! {
+    // Generate the code for the update() method
+    let update_code = quote! {
+        pub async fn update(&self, client: &mongodb::Client, filter: bson::Document, update_doc: bson::Document) -> mongodb::error::Result<mongodb::results::UpdateResult> {
+            let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
+            let collection = client.database(&db_name).collection::<Self>(#str_name);
 
-    // pub async fn update(&self, client: &mongodb::Client, filter: bson::Document) -> mongodb::error::Result<mongodb::results::UpdateResult> {
-    //     let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
-    //     let collection = client.database(&db_name).collection(#str_name);
-    
-    //     let update_doc = bson::to_document(&self).unwrap();
-    //     collection.update_one(filter, update_doc, None).await
-    // }};
-    
-    // let delete_code = quote! {
-    //     pub async fn delete(id: ObjectId, client: &mongodb::Client) -> mongodb::error::Result<mongodb::results::DeleteResult> {
-    //         let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
-    //         let collection = client.database(&db_name).collection(#str_name);
+            let document = bson::to_document(self).unwrap();
+            let update_result = collection.update_one(filter, bson::doc! {"$set": document }, None).await?;
 
-    //         let filter = doc! { "_id": id };
-    //         collection.delete_one(filter, None).await
-    //     }
-    // };
-   
-    let expanded = quote! {
-        impl #name {
-            #insert_code
-            #list_code
-            // #delete_code
-
+            Ok(update_result)
         }
     };
+       // Generate the code for the delete() method
+       let delete_code = quote! {
+        pub async fn delete(client: &mongodb::Client, id: ObjectId) -> mongodb::error::Result<mongodb::results::DeleteResult> {
+            let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
+            let collection = client.database(&db_name).collection::<Self>(#str_name);
+            let filter = bson::doc! { "_id": id };
+            collection.delete_one(filter, None).await
+        }};
+
+    // Combine the generated code into a single implementation block
+
+    let expanded = quote! {
+            impl #name {
+                #insert_code
+                #list_code
+                #update_code
+                #delete_code
+            }
+        };
 
     TokenStream::from(expanded)
 }
@@ -89,15 +99,13 @@ pub fn mongo_deletable_derive(input: TokenStream) -> TokenStream {
     let str_name = &name.to_string();
 
     let delete_code = quote! {
-        pub async fn delete(id: &ObjectId,client: &Client) -> Result<DeleteResult, mongodb::error::Error> {
-            
+        pub async fn delete<T: DeserializeOwned>(id: &ObjectId, client: &Client) -> Result<DeleteResult, mongodb::error::Error> {
             let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
             let collection = client.database(&db_name).collection(#str_name);
-        
+
             let filter = doc! { "_id": id.clone() };
-            collection.delete_one(filter, None)
+            collection.delete_one(filter, None).await
         }
-        
     };
 
     let expanded = quote! {
@@ -108,14 +116,15 @@ pub fn mongo_deletable_derive(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
 #[proc_macro_derive(MongoAggregate)]
 pub fn mongo_aggregate_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let name = input.ident;
-    println!("{:?}",name);
-    let str_name=&name.to_string();
-   
+    println!("{:?}", name);
+    let str_name = &name.to_string();
+
     let pipeline_code = quote! {
         pub async fn aggregate<T>(client: &mongodb::Client, pipeline: Vec<bson::Document>) -> Result<Vec<T>, mongodb::error::Error>
         where
@@ -125,7 +134,7 @@ pub fn mongo_aggregate_derive(input: TokenStream) -> TokenStream {
             let collection = client.database(&db_name).collection::<T>(#str_name);
 
             let mut cursor = collection.aggregate(pipeline, None).await.unwrap();
-
+            //  println!("{:?}",cursor);
             let mut results = Vec::new();
             while let Some(doc) = cursor.try_next().await.unwrap() {
                 let item = bson::from_document(doc).unwrap();
@@ -144,3 +153,4 @@ pub fn mongo_aggregate_derive(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
