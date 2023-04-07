@@ -21,8 +21,12 @@ pub struct User {
     pub email: String,
     pub password: String,
     pub phone: String,
+    pub about: Option< String>,
+
 
 }
+
+
 #[derive(Debug, Serialize, Deserialize)]
 
 pub struct CreateResponseObject<T>{
@@ -43,12 +47,7 @@ pub struct MissingField{
     
 
 }
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub user_id: u32,
-    pub exp: usize,
-    pub token_type: String,
-}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Login{
    
@@ -56,25 +55,13 @@ pub struct Login{
 pub user_name:Option<String>,
     pub password: String,
 }
-
-#[derive(Debug, Serialize, Deserialize)]
-
-pub struct AccessToken {
-    pub message:String,
-    pub access_token: String,
-    pub refresh_token: String,
-    
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateUser {
-    // pub unique_id:String,
     pub first_name:Option< String>,
     pub last_name:Option< String>,
     pub user_name:Option< String>,
     pub email: Option< String>,
     pub about: Option< String>,
-    // pub password: String,
     pub phone: Option< String>
   
 }

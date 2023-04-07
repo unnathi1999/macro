@@ -1,11 +1,7 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
-
-// use syn::{parse_macro_input, DeriveInput};
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
-// use bson::doc;
-
 #[proc_macro_derive(crud)]
 pub fn crud_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -91,38 +87,13 @@ pub fn crud_derive(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
-#[proc_macro_derive(MongoDeletable)]
-pub fn mongo_deletable_derive(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
 
-    let name = input.ident;
-    let str_name = &name.to_string();
-
-    let delete_code = quote! {
-        pub async fn delete<T: DeserializeOwned>(id: &ObjectId, client: &Client) -> Result<DeleteResult, mongodb::error::Error> {
-            let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
-            let collection = client.database(&db_name).collection(#str_name);
-
-            let filter = doc! { "_id": id.clone() };
-            collection.delete_one(filter, None).await
-        }
-    };
-
-    let expanded = quote! {
-        impl #name {
-            #delete_code
-        }
-    };
-
-    TokenStream::from(expanded)
-}
 
 #[proc_macro_derive(MongoAggregate)]
 pub fn mongo_aggregate_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let name = input.ident;
-    println!("{:?}", name);
     let str_name = &name.to_string();
 
     let pipeline_code = quote! {
@@ -134,7 +105,6 @@ pub fn mongo_aggregate_derive(input: TokenStream) -> TokenStream {
             let collection = client.database(&db_name).collection::<T>(#str_name);
 
             let mut cursor = collection.aggregate(pipeline, None).await.unwrap();
-            //  println!("{:?}",cursor);
             let mut results = Vec::new();
             while let Some(doc) = cursor.try_next().await.unwrap() {
                 let item = bson::from_document(doc).unwrap();
@@ -153,4 +123,5 @@ pub fn mongo_aggregate_derive(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
 

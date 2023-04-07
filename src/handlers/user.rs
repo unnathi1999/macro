@@ -19,18 +19,6 @@ use serde_json::json;
 pub async fn user_signup(_req: &mut Request, res: &mut Response) {
     let client = get_mongodb_client();
     let mut payload_data = _req.parse_json::<User>().await.unwrap();
-    let email = &payload_data.email;
-
-    // let date_added = Utc::now();
-    // Check for valid email format
-    let is_valid = is_valid_email(&email).await;
-    if !is_valid {
-        let response_obj = ResponseObject {
-            message: "Invalid email.".to_string(),
-        };
-        res.set_status_code(StatusCode::BAD_REQUEST);
-        return res.render(Json(response_obj));
-    }
 
     // Check for missing fields
     let missing_fields = check_empty_fields(&payload_data, &["last_name"]).await;
@@ -42,6 +30,17 @@ pub async fn user_signup(_req: &mut Request, res: &mut Response) {
         return res.render(Json(response_obj));
     }
 
+    // Check for valid email format
+    let is_valid = is_valid_email(&payload_data.email).await;
+    if !is_valid {
+        let response_obj = ResponseObject {
+            message: "Invalid email.".to_string(),
+        };
+        res.set_status_code(StatusCode::BAD_REQUEST);
+
+        return res.render(Json(response_obj));
+    }
+  
     let password = &payload_data.password;
     let hashed_password = hash(password, DEFAULT_COST).unwrap();   
     payload_data.password = hashed_password;
@@ -63,18 +62,6 @@ pub async fn user_signup(_req: &mut Request, res: &mut Response) {
         res.set_status_code(StatusCode::INTERNAL_SERVER_ERROR);
         return res.render(Json(response_obj));
     }
-    
-    // let inserted_id = result.inserted_id.await.unwrap();
-    // // let filter=doc! {"_id": inserted_id};
-    // // // Retrieve list of users
-    // // let _users = User::find(&client,Some(filter)).await.unwrap();
-
-    // // Render response with list of users
-    // let response_obj = CreateResponseObject {
-    //     message: "User is added successfully".to_string(),
-    //     data: inserted_id.to_string()
-    // };
-    // res.render(Json(response_obj));
 }
 #[handler]
 pub async fn list_users(_req: &mut Request, res: &mut Response) {
@@ -155,17 +142,27 @@ pub async fn user_update(_req: &mut Request, res: &mut Response) {
         .param::<String>("id")
         .expect("Error: missing user  ID parameter")
         .to_string();  
-  
+    let id = match ObjectId::from_str(&path) {
+        Ok(id) => id,
+        Err(_) => {
+            res.set_status_code(StatusCode::NOT_FOUND);
+            let response_obj = ResponseObject {
+                message: format!("Invalid user ID: {}", path),
+            };
+            return res.render(Json(response_obj));
+        }
+    };
 
     let payload_data = _req.parse_json::<UpdateUser>().await.unwrap();
 
 
-    let filter = doc! { "_id": ObjectId::from_str(&path).unwrap() };
-   
+    let filter = doc! { "_id": id };   
  
 
      // Check for missing fields
-     let missing_fields = check_empty_fields(&payload_data, &["last_name"]).await;
+    let required_fields = ["last_name", "about"];
+
+     let missing_fields = check_empty_fields(&payload_data, &required_fields).await;
      if !missing_fields.valid {
          res.set_status_code(StatusCode::CONFLICT);
          let response_obj = ResponseObject {
@@ -178,12 +175,21 @@ pub async fn user_update(_req: &mut Request, res: &mut Response) {
     let _cloned_update_doc = update_doc.clone();
     let _update_result = User::update(&User::default(), &client, filter, update_doc).await.unwrap();
    println!("{:?}",_update_result);
-    res.set_status_code(StatusCode::NOT_FOUND);
-    let response_obj = ResponseObject {
-        message: format!("User with ID {} not found", path),
-    };
-    return res.render(Json(response_obj));
-}
+    if _update_result.matched_count == 1 {
+ 
+        res.set_status_code(StatusCode::OK);
+        let response_obj = ResponseObject {
+            message: "User updated successfully".to_string(),
+        };
+        return res.render(Json(response_obj));
+    }else {
+        res.set_status_code(StatusCode::NOT_FOUND);
+        let response_obj = ResponseObject {
+            message: format!("User with ID {} not found", path),
+        };
+        return res.render(Json(response_obj));
+
+}}
    
 
 #[handler]
