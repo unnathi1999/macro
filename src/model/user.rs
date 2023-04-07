@@ -3,7 +3,7 @@ extern crate bson;
 // use mongodb::bson::oid::ObjectId;
 
 
-use motio_macro::{ MongoInsertable,MongoAggregate,};
+use motio_macro::{ crud,MongoAggregate,};
 use futures_util::stream::TryStreamExt;
 
 use bson::doc;
@@ -11,7 +11,7 @@ use bson::doc;
 use serde::de::DeserializeOwned;
 
 use bson::oid::ObjectId;
-#[derive(Debug, Serialize, Default, Deserialize, MongoInsertable,MongoAggregate)]
+#[derive(Debug, Serialize, Default, Deserialize, crud,MongoAggregate)]
 
 pub struct User {
   

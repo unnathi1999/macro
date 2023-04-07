@@ -49,7 +49,7 @@ pub async fn user_signup(_req: &mut Request, res: &mut Response) {
     let inserted_id = _result.inserted_id.as_object_id().unwrap();
     let filter=doc! {"_id": inserted_id};
     // Retrieve list of users
-    let _users = User::list(&client,Some(filter)).await.unwrap();
+    let _users = User::find(&client,Some(filter)).await.unwrap();
 
     // Render response with list of users
     let response_obj = CreateResponseObject {
@@ -61,7 +61,7 @@ pub async fn user_signup(_req: &mut Request, res: &mut Response) {
 #[handler]
 pub async fn list_users(_req: &mut Request, res: &mut Response) {
     let client = get_mongodb_client();
-    match User::list(&client, None).await {
+    match User::find(&client, None).await {
         Ok(users) => {
             let response_obj = CreateResponseObject {
                 message: "List of users".to_string(),

@@ -6,8 +6,8 @@ use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 // use bson::doc;
 
-#[proc_macro_derive(MongoInsertable)]
-pub fn mongo_insertable_derive(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(crud)]
+pub fn crud_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     // Get the name of the struct
@@ -20,10 +20,10 @@ pub fn mongo_insertable_derive(input: TokenStream) -> TokenStream {
         if let Fields::Named(f) = s.fields {
             f.named
         } else {
-            panic!("mongocrud  derive only supports structs with named fields")
+            panic!("crud  derive only supports structs with named fields")
         }
     } else {
-        panic!("mongocrud derive only supports structs")
+        panic!("crud derive only supports structs")
     };
 
     // Extract the names of the fields in the struct
@@ -43,7 +43,7 @@ pub fn mongo_insertable_derive(input: TokenStream) -> TokenStream {
 
     // Generate the code for the list() method
     let list_code = quote! {
-        pub async fn list(client: &mongodb::Client,filter: Option<bson::Document>) -> Result<Vec<Self>, mongodb::error::Error> {
+        pub async fn find(client: &mongodb::Client,filter: Option<bson::Document>) -> Result<Vec<Self>, mongodb::error::Error> {
             let db_name = std::env::var("DB_NAME").expect("DB_NAME is not set in .env file");
             let collection = client.database(&db_name).collection(#str_name);
             let mut cursor = collection.find(filter, None).await?;
